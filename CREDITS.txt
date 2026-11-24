@@ -1,0 +1,11 @@
+じいちゃん・ばあちゃんとガチ見つめ合い で使っている素材
+
+■ 源じい・トメばあ・若いころのトメばあの顔（frames/ フォルダの画像）
+  Microsoft Rocketbox Avatar Library の 3D モデル
+  （Male_Adult_09 の頭、ojisan の体、Business_Female_03、Female_Adult_03）に
+  白髪・しわ・シミ・服の色などを加え、Blender（Cycles）で描いたもの
+  https://github.com/microsoft/Microsoft-Rocketbox
+  MIT License（全文は LICENSE-Rocketbox.txt）
+
+■ 効果音
+  ブラウザの中で音を作っています（録音した素材は使っていません）
