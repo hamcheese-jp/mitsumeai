@@ -1851,6 +1851,9 @@
     @media (max-height: 660px) {
       #charWrap { width: min(86vw, 440px, calc(68vh * 400 / 460)); }
     }
+    .camera-help { margin-top: 6px; font-weight: 600; line-height: 1.55; }
+    .camera-help .open-btn { display: block; width: 100%; margin: 6px 0 2px; padding: 9px 10px; border: 2px solid #1b1922; border-radius: 10px; background: #2563eb; color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; }
+    .camera-help .copy-btn { background: #fff; color: #1b1922; }
   </style>
 </head>
 <body>
@@ -1978,6 +1981,7 @@
 
           <div id="cameraErrorBox" class="camera-error-box hidden">
             <div id="cameraErrorMsg">カメラを起動できませんでした。</div>
+            <div id="cameraHelp" class="camera-help hidden"></div>
             <div style="margin-top: 4px;">下の<strong>「カメラなしで遊ぶ」</strong>から今すぐプレイできます！</div>
           </div>
 
@@ -4591,7 +4595,7 @@
         var md = null;
         try { md = navigator && navigator.mediaDevices; } catch (e) { md = null; }
         if (!md || typeof md.getUserMedia !== 'function') {
-          showCameraFailure('この環境ではカメラが使えません（HTTPS の制限、または未対応）。');
+          showCameraFailure('この環境ではカメラが使えません（HTTPS の制限、または未対応）。', 'NotSupported');
           return;
         }
         dom.playCameraBtn.disabled = true;
@@ -4615,13 +4619,67 @@
             var reason = 'カメラの使用が許可されませんでした。';
             if (err && err.name === 'NotFoundError') reason = 'カメラが見つかりませんでした。';
             else if (err && err.name === 'NotReadableError') reason = 'カメラがほかのアプリで使われています。';
-            showCameraFailure(reason);
+            showCameraFailure(reason, err && err.name);
           });
         } catch (e2) {
-          showCameraFailure('制限によりカメラを起動できませんでした。');
+          showCameraFailure('制限によりカメラを起動できませんでした。', 'NotAllowedError');
         }
       }
-      function showCameraFailure(msg) {
+      // アプリの中のブラウザかどうか
+      function inAppBrowser() {
+        var ua = navigator.userAgent || '';
+        if (/\bLine\//i.test(ua)) return 'LINE';
+        if (/Instagram/i.test(ua)) return 'Instagram';
+        if (/FBAN|FBAV|FB_IAB/i.test(ua)) return 'Facebook';
+        if (/musical_ly|BytedanceWebview|TikTok/i.test(ua)) return 'TikTok';
+        if (/Twitter/i.test(ua)) return 'X';
+        if (/; wv\)/.test(ua)) return 'app';
+        if (/iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua)) return 'app';
+        return '';
+      }
+      function openInBrowser() {
+        var url = location.href.split('#')[0];
+        var ua = navigator.userAgent || '';
+        if (/\bLine\//i.test(ua)) { location.href = url + (url.indexOf('?') < 0 ? '?' : '&') + 'openExternalBrowser=1'; return; }
+        if (/Android/i.test(ua)) { location.href = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;action=android.intent.action.VIEW;end'; return; }
+        if (/iPhone|iPad|iPod/.test(ua)) { location.href = 'x-safari-' + url; return; }
+        window.open(url, '_blank');
+      }
+      function fillCameraHelp(errName) {
+        var box = document.getElementById('cameraHelp');
+        if (!box) return;
+        box.innerHTML = '';
+        var app = inAppBrowser(), ios = /iPhone|iPad|iPod/.test(navigator.userAgent || '');
+        var p = document.createElement('div');
+        if (app) {
+          p.textContent = (app === 'app' ? 'アプリの中' : app + ' の中') + 'のブラウザでは、カメラが使えないことがあります。' + (ios ? 'Safari' : 'Chrome などのブラウザ') + 'で開くとカメラで遊べます。';
+          box.appendChild(p);
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'open-btn'; b.textContent = '🌐 ' + (ios ? 'Safari' : 'ブラウザ') + 'で開きなおす';
+          b.onclick = openInBrowser;
+          box.appendChild(b);
+          var c = document.createElement('button');
+          c.type = 'button'; c.className = 'open-btn copy-btn'; c.textContent = '🔗 ページの住所をコピー';
+          c.onclick = function () {
+            var u = location.href.split('#')[0];
+            var done = function () { c.textContent = '✅ コピーしました。ブラウザに貼りつけて開いてね'; };
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, function () { prompt('この住所をコピーしてね', u); });
+            else prompt('この住所をコピーしてね', u);
+          };
+          box.appendChild(c);
+          var t = document.createElement('div');
+          t.textContent = 'うまく開かないときは、画面の「…」や「⋮」、共有のメニューから「ブラウザで開く」を選んでね。';
+          box.appendChild(t);
+        } else if (errName === 'NotAllowedError') {
+          p.textContent = ios
+            ? 'もう一度ためして「許可」を押してね。出てこないときは、住所の左の「ぁあ」→「Webサイトの設定」→「カメラ」を「許可」に。'
+            : 'もう一度ためして「許可」を押してね。出てこないときは、住所の左の 🔒 や設定アイコン →「カメラ」を「許可」に。';
+          box.appendChild(p);
+        } else return;
+        box.classList.remove('hidden');
+      }
+      function showCameraFailure(msg, errName) {
+        fillCameraHelp(errName || '');
         if (dom.titleModal.classList.contains('hidden')) returnToTitle();
         dom.playCameraBtn.disabled = false;
         dom.playCameraBtnLabel.textContent = 'カメラをもう一回ためす';
